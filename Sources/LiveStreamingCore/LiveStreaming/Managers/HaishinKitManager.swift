@@ -356,7 +356,7 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
 
   /// **MediaMixer (Examples 패턴)**
   lazy var mixer = MediaMixer(
-    captureSessionMode: .manual, multiTrackAudioMixingEnabled: false)
+    multiTrackAudioMixingEnabled: false, useManualCapture: true)
 
   /// MediaMixer 인스턴스 저장 용도
   var mediaMixer: MediaMixer?
