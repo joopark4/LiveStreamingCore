@@ -116,13 +116,25 @@ public class VideoCodecWorkaroundManager: NSObject, ObservableObject {
         let safeHeight = (settings.videoHeight / 16) * 16
         videoSettings.videoSize = CGSize(width: safeWidth, height: safeHeight)
         
-        // 2. 보수적인 비트레이트 설정
-        videoSettings.bitRate = min(settings.videoBitrate * 1000, 4_000_000) // 최대 4Mbps
-        
+        // 2. 보수적인 비트레이트 설정 (1080p는 상한선 상향)
+        let maxBitrate: Int
+        if settings.videoWidth >= 1920 && settings.videoHeight >= 1080 {
+            maxBitrate = 8_000_000  // 1080p: 최대 8Mbps
+        } else {
+            maxBitrate = 4_000_000  // 720p 이하: 최대 4Mbps
+        }
+        videoSettings.bitRate = min(settings.videoBitrate * 1000, maxBitrate)
+
         // 3. VideoToolbox 하드웨어 인코딩 최적화 설정 (HaishinKit 2.0.8 API 호환)
-        videoSettings.profileLevel = kVTProfileLevel_H264_Baseline_AutoLevel as String // 안정성 우선
+        // 1080p는 High 프로파일, 720p 이하는 Baseline 프로파일 사용
+        if settings.videoWidth >= 1920 && settings.videoHeight >= 1080 {
+            videoSettings.profileLevel = kVTProfileLevel_H264_High_AutoLevel as String // 1080p: 고품질
+            videoSettings.maxKeyFrameIntervalDuration = 1 // 1080p: 1초 키프레임
+        } else {
+            videoSettings.profileLevel = kVTProfileLevel_H264_Baseline_AutoLevel as String // 720p: 안정성 우선
+            videoSettings.maxKeyFrameIntervalDuration = 2 // 720p: 2초 키프레임
+        }
         videoSettings.allowFrameReordering = false // 실시간 스트리밍 최적화
-        videoSettings.maxKeyFrameIntervalDuration = 2 // 키프레임 간격
 
         // 하드웨어 가속은 HaishinKit 2.x에서 기본적으로 활성화됨
 

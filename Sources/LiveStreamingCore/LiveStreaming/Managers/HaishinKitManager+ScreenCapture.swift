@@ -114,7 +114,13 @@ extension HaishinKitManager {
     // 💡 VideoToolbox 하드웨어 인코딩 최적화 (HaishinKit 2.0.8 API 호환)
     videoSettings.profileLevel = kVTProfileLevel_H264_High_AutoLevel as String  // 고품질 프로파일
     videoSettings.allowFrameReordering = true  // B-프레임 활용 (압축 효율 향상)
-    videoSettings.maxKeyFrameIntervalDuration = 2  // 2초 간격 키프레임
+
+    // 🎯 1080p 최적화: 키프레임 간격 단축으로 품질 향상
+    if userSettings.videoWidth >= 1920 && userSettings.videoHeight >= 1080 {
+      videoSettings.maxKeyFrameIntervalDuration = 1  // 1080p: 1초 간격 키프레임
+    } else {
+      videoSettings.maxKeyFrameIntervalDuration = 2  // 720p 이하: 2초 간격 키프레임
+    }
 
     // 하드웨어 가속은 HaishinKit 2.x에서 기본적으로 활성화됨
 
