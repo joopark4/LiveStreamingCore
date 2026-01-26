@@ -1,4 +1,6 @@
 import Foundation
+@_exported import HaishinKit
+@_exported import RTMPHaishinKit
 
 public typealias LiveStreamSettings = LiveStreamingCoreNamespace.LiveStreamSettings
 

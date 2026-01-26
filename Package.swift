@@ -19,7 +19,8 @@ let package = Package(
         .target(
             name: "LiveStreamingCore",
             dependencies: [
-                .product(name: "HaishinKit", package: "HaishinKit.swift")
+                .product(name: "HaishinKit", package: "HaishinKit.swift"),
+                .product(name: "RTMPHaishinKit", package: "HaishinKit.swift")
             ],
             path: "Sources",
             exclude: [],
