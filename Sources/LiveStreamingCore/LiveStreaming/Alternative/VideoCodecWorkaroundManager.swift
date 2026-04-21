@@ -1,5 +1,6 @@
 import Foundation
 import HaishinKit
+import RTMPHaishinKit
 import AVFoundation
 import VideoToolbox
 import UIKit
@@ -134,7 +135,7 @@ public class VideoCodecWorkaroundManager: NSObject, ObservableObject {
             videoSettings.profileLevel = kVTProfileLevel_H264_Baseline_AutoLevel as String // 720p: 안정성 우선
             videoSettings.maxKeyFrameIntervalDuration = 2 // 720p: 2초 키프레임
         }
-        videoSettings.allowFrameReordering = false // 실시간 스트리밍 최적화
+        videoSettings.allowFrameReordering = false // B-프레임 비활성화 (에러 복구 시 지연 최소화)
 
         // 하드웨어 가속은 HaishinKit 2.x에서 기본적으로 활성화됨
 
@@ -376,17 +377,19 @@ public class VideoCodecWorkaroundManager: NSObject, ObservableObject {
         return sampleBuffer
     }
     
-    /// YUV420 포맷으로 변환 (간단한 구현)
+    /// YUV420 포맷으로 변환 (미구현 - 원본 반환)
+    /// - Note: 실제 변환이 필요한 경우 vImage나 Core Video 변환 사용 필요
     private func convertPixelBufferToYUV420(_ pixelBuffer: CVPixelBuffer) -> CVPixelBuffer? {
-        // 실제 구현에서는 vImage나 Core Video 변환 사용
-        // 현재는 간단한 더미 구현
+        // TODO: 실제 YUV420 변환 구현 필요
+        // 현재는 원본 버퍼를 그대로 반환 (변환 없음)
         return pixelBuffer
     }
-    
-    /// 정렬된 크기로 스케일링
+
+    /// 정렬된 크기로 스케일링 (미구현 - 원본 반환)
+    /// - Note: 실제 스케일링이 필요한 경우 Core Graphics나 vImage 사용 필요
     private func scalePixelBufferToAlignedSize(_ pixelBuffer: CVPixelBuffer, width: Int, height: Int) -> CVPixelBuffer? {
-        // 실제 구현에서는 Core Graphics나 vImage 사용
-        // 현재는 간단한 더미 구현
+        // TODO: 실제 스케일링 구현 필요
+        // 현재는 원본 버퍼를 그대로 반환 (스케일링 없음)
         return pixelBuffer
     }
 }

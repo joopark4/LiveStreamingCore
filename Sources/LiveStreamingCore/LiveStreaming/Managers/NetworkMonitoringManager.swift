@@ -156,20 +156,20 @@ public final class NetworkMonitoringManager: NetworkMonitoringManagerProtocol {
         )
     }
     
-    /// 네트워크 지연 시간 측정
+    /// 네트워크 지연 시간 반환 (기본값)
+    /// - Note: 실제 ping 측정 미구현, 기본값 50ms 반환
     public func measureNetworkLatency() async -> Double {
-        // 실제 구현에서는 ping 테스트나 HTTP 요청을 통해 측정
-        // 현재는 기본값 반환
-        return 50.0 // 50ms
+        // TODO: 실제 구현 시 ping 테스트나 HTTP 요청을 통해 측정 필요
+        return 50.0 // 기본값 50ms
     }
-    
-    /// 대역폭 테스트
+
+    /// 대역폭 정보 반환 (기본값)
+    /// - Note: 실제 대역폭 테스트 미구현, 기본값 반환
     public func testBandwidth() async -> BandwidthTestResult {
-        // 실제 구현에서는 대역폭 테스트 수행
-        // 현재는 기본값 반환
+        // TODO: 실제 구현 시 대역폭 테스트 수행 필요
         return BandwidthTestResult(
-            downloadSpeed: 50.0, // 50 Mbps
-            uploadSpeed: 10.0,   // 10 Mbps
+            downloadSpeed: 50.0, // 기본값 50 Mbps
+            uploadSpeed: 10.0,   // 기본값 10 Mbps
             quality: currentNetworkQuality
         )
     }

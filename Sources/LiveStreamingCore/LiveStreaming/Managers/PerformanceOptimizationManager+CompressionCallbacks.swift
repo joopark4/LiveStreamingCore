@@ -8,10 +8,8 @@ import os.log
 import Accelerate
 
 extension PerformanceOptimizationManager {
-    // MARK: - 🔧 개선: 강화된 압축 콜백 처리
-    
-    // MARK: - 🔧 개선: 압축 콜백 지원 메서드들
-    
+    // MARK: - 압축 콜백 처리 및 지원 메서드
+
     /// 압축 오류 처리
     func handleCompressionError(status: OSStatus, infoFlags: VTEncodeInfoFlags) {
         let errorDescription = compressionErrorDescription(status)

@@ -4,6 +4,7 @@ import Combine
 import CoreImage
 import Foundation
 import HaishinKit
+import RTMPHaishinKit
 import Network
 import UIKit
 import VideoToolbox
@@ -356,7 +357,7 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
 
   /// **MediaMixer (Examples 패턴)**
   lazy var mixer = MediaMixer(
-    multiTrackAudioMixingEnabled: false, useManualCapture: true)
+    captureSessionMode: .manual, multiTrackAudioMixingEnabled: false)
 
   /// MediaMixer 인스턴스 저장 용도
   var mediaMixer: MediaMixer?
@@ -511,7 +512,7 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
     logger.debug("📶 네트워크 품질 업데이트: \(quality.description)", category: .connection)
   }
 
-  // MARK: - 기존 일반 스트리밍 메서드들 제거 - 화면 캡처 스트리밍만 사용
+  // MARK: - 스트리밍 중지 (화면 캡처 전용)
 
   /// **Examples 패턴을 적용한 스트리밍 중지**
   public func stopStreaming() async {
@@ -523,17 +524,17 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
     // 2. Examples 패턴: MediaMixer 정리
     cleanupMediaMixer()
 
-    // 3. 기존 MediaMixer 중지
+    // 3. MediaMixer 실행 중지
     await mixer.stopRunning()
 
-    // 4. 카메라/오디오 해제
-    try? await mixer.attachAudio(nil, track: 0)  // 오디오 해제
+    // 4. 오디오 연결 해제
+    try? await mixer.attachAudio(nil, track: 0)
 
-    // 4. 모니터링 중지
+    // 5. 모니터링 중지
     stopDataMonitoring()
     stopConnectionHealthMonitoring()
 
-    // 5. 상태 업데이트
+    // 6. 상태 업데이트
     isStreaming = false
     isScreenCaptureMode = false  // 화면 캡처 모드 해제
     currentStatus = .idle
@@ -542,6 +543,4 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
 
     logger.info("✅ **Examples 패턴** 스트리밍 중지 완료")
   }
-
-  // 기존 일반 스트리밍용 카메라/오디오 설정 메서드들 제거 - 화면 캡처 스트리밍만 사용
 }
