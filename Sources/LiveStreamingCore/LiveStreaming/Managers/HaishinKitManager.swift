@@ -174,8 +174,34 @@ public protocol HaishinKitManagerProtocol: AnyObject {
   /// 설정 저장
   func saveSettings(_ settings: LiveStreamSettings)
 
+  /// 송출 마이크 음소거 상태 적용
+  func setMicrophoneMuted(_ muted: Bool) async -> Bool
+
   /// RTMP 스트림 반환 (UI 미리보기용)
   func getRTMPStream() -> RTMPStream?
+
+  /// 비메인 액터 수동 프레임 enqueue
+  func enqueueManualFrame(
+    _ pixelBuffer: CVPixelBuffer,
+    presentationTime: CMTime?,
+    frameRate: Int?,
+    compositionTimeMs: Double?,
+    cameraFrameAgeMs: Double?
+  ) async -> Bool
+
+  /// 화면 캡처 드랍 기록
+  func recordScreenCaptureDrop(reason: ScreenCaptureDropReason)
+
+  /// 화면 캡처 루프 메트릭 기록
+  func reportScreenCaptureLoopMetrics(
+    captureCadenceMs: Double?,
+    cameraFrameAgeMs: Double?,
+    compositionTimeMs: Double?,
+    mainThreadHitch: Bool
+  )
+
+  /// 확장된 화면 캡처 진단 스냅샷
+  func getScreenCaptureDiagnosticsSnapshot() -> ScreenCaptureStats
 }
 
 // MARK: - Stream Switcher (Examples 패턴 적용)
@@ -356,7 +382,7 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
   let logger = StreamingLogger.shared
 
   /// **MediaMixer (Examples 패턴)**
-  /// captureSessionMode: .single — 표준 AVCaptureSession으로 마이크 캡처 경로 유지.
+  /// captureSessionMode: .single — 표준 AVCaptureSession을 사용해 마이크 캡처 경로를 유지.
   /// 비디오 프레임은 RTMPStream.append로 수동 주입하므로 비디오 디바이스는 attach하지 않음.
   /// (HaishinKit 2.2.5의 `.manual`은 NullCaptureSession이라 오디오 입력이 불가능.)
   lazy var mixer = MediaMixer(
@@ -373,6 +399,9 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
 
   /// 성능 최적화 매니저
   lazy var performanceOptimizer = PerformanceOptimizationManager()
+
+  /// 수동 프레임 전처리기
+  nonisolated let manualFrameProcessor = ManualFrameProcessor()
 
   /// 🔧 개선: VideoToolbox 진단 및 설정 프리셋 지원
   var videoToolboxPreset: VideoToolboxPreset = .balanced
@@ -418,7 +447,6 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
   @Published public var textOverlaySettings: TextOverlaySettings = TextOverlaySettings()
 
   /// 현재 송출 마이크 음소거 상태
-  /// `HaishinKitManager+AudioControl` 에서 `setMicrophoneMuted(_:)` / `applyCurrentMicrophoneMuteState()` 가 참조.
   var isMicrophoneMuted: Bool = false
 
   /// 현재 스트리밍 설정
@@ -519,7 +547,7 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
     logger.debug("📶 네트워크 품질 업데이트: \(quality.description)", category: .connection)
   }
 
-  // MARK: - 스트리밍 중지 (화면 캡처 전용)
+  // MARK: - 기존 일반 스트리밍 메서드들 제거 - 화면 캡처 스트리밍만 사용
 
   /// **Examples 패턴을 적용한 스트리밍 중지**
   public func stopStreaming() async {
@@ -531,17 +559,17 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
     // 2. Examples 패턴: MediaMixer 정리
     cleanupMediaMixer()
 
-    // 3. MediaMixer 실행 중지
+    // 3. 기존 MediaMixer 중지
     await mixer.stopRunning()
 
-    // 4. 오디오 연결 해제
-    try? await mixer.attachAudio(nil, track: 0)
+    // 4. 카메라/오디오 해제
+    try? await mixer.attachAudio(nil, track: 0)  // 오디오 해제
 
-    // 5. 모니터링 중지
+    // 4. 모니터링 중지
     stopDataMonitoring()
     stopConnectionHealthMonitoring()
 
-    // 6. 상태 업데이트
+    // 5. 상태 업데이트
     isStreaming = false
     isScreenCaptureMode = false  // 화면 캡처 모드 해제
     currentStatus = .idle
@@ -550,4 +578,6 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
 
     logger.info("✅ **Examples 패턴** 스트리밍 중지 완료")
   }
+
+  // 기존 일반 스트리밍용 카메라/오디오 설정 메서드들 제거 - 화면 캡처 스트리밍만 사용
 }

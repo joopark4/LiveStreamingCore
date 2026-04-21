@@ -278,7 +278,8 @@ extension HaishinKitManager {
     }
 
     // 4. CMSampleTiming 설정 (정확한 타이밍 정보)
-    let frameDuration = CMTime(value: 1, timescale: 30)  // 30fps 기준
+    let frameRate = max(currentSettings?.frameRate ?? 30, 1)
+    let frameDuration = CMTime(value: 1, timescale: CMTimeScale(frameRate))
     let currentTime = CMClockGetTime(CMClockGetHostTimeClock())
 
     var sampleTiming = CMSampleTimingInfo(

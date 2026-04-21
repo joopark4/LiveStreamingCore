@@ -1,5 +1,4 @@
 import Foundation
-@_exported import HaishinKit
 
 public typealias LiveStreamSettings = LiveStreamingCoreNamespace.LiveStreamSettings
 

@@ -114,63 +114,124 @@ extension HaishinKitManager {
     }
   }
 
-  /// 수동으로 프레임을 스트리밍에 전송 (화면 캡처 모드) - 개선된 버전
+  public func recordScreenCaptureDrop(reason: ScreenCaptureDropReason) {
+    screenCaptureStats.recordDrop(reason: reason)
+  }
+
+  public func reportScreenCaptureLoopMetrics(
+    captureCadenceMs: Double?,
+    cameraFrameAgeMs: Double?,
+    compositionTimeMs: Double?,
+    mainThreadHitch: Bool
+  ) {
+    screenCaptureStats.recordLoopMetrics(
+      captureCadenceMs: captureCadenceMs,
+      cameraFrameAgeMs: cameraFrameAgeMs,
+      compositionTimeMs: compositionTimeMs,
+      mainThreadHitch: mainThreadHitch
+    )
+  }
+
+  nonisolated public func enqueueManualFrame(
+    _ pixelBuffer: CVPixelBuffer,
+    presentationTime: CMTime? = nil,
+    frameRate: Int? = nil,
+    compositionTimeMs: Double? = nil,
+    cameraFrameAgeMs: Double? = nil
+  ) async -> Bool {
+    let enqueueStartTime = CACurrentMediaTime()
+
+    guard
+      let snapshot = await MainActor.run(body: { () -> (
+        settings: LiveStreamSettings,
+        shouldAddTextOverlay: Bool
+      )? in
+        guard self.isStreaming, let settings = self.currentSettings else { return nil }
+        return (
+          settings: settings,
+          shouldAddTextOverlay: self.showTextOverlay && !self.textOverlaySettings.text.isEmpty
+        )
+      })
+    else {
+      return false
+    }
+
+    var effectiveSettings = snapshot.settings
+    if let frameRate {
+      effectiveSettings.frameRate = frameRate
+    }
+
+    var frameToProcess = pixelBuffer
+    if snapshot.shouldAddTextOverlay,
+       let overlaidPixelBuffer = await self.addTextOverlayToPixelBuffer(pixelBuffer)
+    {
+      frameToProcess = overlaidPixelBuffer
+    }
+
+    guard await self.validatePixelBufferForEncoding(frameToProcess) else {
+      await MainActor.run {
+        self.screenCaptureStats.incrementFailureCount()
+      }
+      return false
+    }
+
+    guard
+      let preparedFrame = await manualFrameProcessor.prepareFrame(
+        pixelBuffer: frameToProcess,
+        settings: effectiveSettings,
+        presentationTime: presentationTime
+      )
+    else {
+      await MainActor.run {
+        self.screenCaptureStats.incrementFailureCount()
+      }
+      return false
+    }
+
+    return await transmitPreparedSampleBuffer(
+      preparedFrame.sampleBuffer,
+      sourcePixelBuffer: frameToProcess,
+      preprocessTimeMs: preparedFrame.preprocessTimeMs,
+      enqueueLagMs: (CACurrentMediaTime() - enqueueStartTime) * 1000,
+      compositionTimeMs: compositionTimeMs,
+      cameraFrameAgeMs: cameraFrameAgeMs
+    )
+  }
+
+  /// 수동으로 프레임을 스트리밍에 전송 (하위 호환 래퍼)
   @MainActor
   public func sendManualFrame(_ pixelBuffer: CVPixelBuffer) async {
+    _ = await enqueueManualFrame(pixelBuffer)
+  }
+
+  @MainActor
+  private func transmitPreparedSampleBuffer(
+    _ sampleBuffer: CMSampleBuffer,
+    sourcePixelBuffer: CVPixelBuffer,
+    preprocessTimeMs: Double,
+    enqueueLagMs: Double,
+    compositionTimeMs: Double?,
+    cameraFrameAgeMs: Double?
+  ) async -> Bool {
     guard isStreaming else {
       logger.warning("⚠️ 스트리밍이 활성화되지 않아 프레임 스킵")
-      return
+      return false
     }
 
     // 🔄 통계 업데이트 (프레임 시작)
     screenCaptureStats.updateFrameCount()
+    screenCaptureStats.recordPreprocessTime(preprocessTimeMs)
+    screenCaptureStats.recordEnqueueLag(enqueueLagMs)
+    if compositionTimeMs != nil || cameraFrameAgeMs != nil {
+      screenCaptureStats.recordLoopMetrics(
+        captureCadenceMs: nil,
+        cameraFrameAgeMs: cameraFrameAgeMs,
+        compositionTimeMs: compositionTimeMs,
+        mainThreadHitch: false
+      )
+    }
 
     let currentTime = CACurrentMediaTime()
-
-    // 1. 프레임 유효성 사전 검증
-    guard validatePixelBufferForEncoding(pixelBuffer) else {
-      logger.error("❌ 프레임 유효성 검증 실패 - 프레임 스킵")
-      screenCaptureStats.incrementFailureCount()
-      return
-    }
-
-    let originalWidth = CVPixelBufferGetWidth(pixelBuffer)
-    let originalHeight = CVPixelBufferGetHeight(pixelBuffer)
-    logger.debug("📥 수신 프레임: \(originalWidth)x\(originalHeight)")
-
-    // 1.5. 텍스트 오버레이 처리 (픽셀 버퍼에 직접 병합)
-    var frameToProcess = pixelBuffer
-    if showTextOverlay && !textOverlaySettings.text.isEmpty {
-      if let overlaidPixelBuffer = await addTextOverlayToPixelBuffer(pixelBuffer) {
-        frameToProcess = overlaidPixelBuffer
-        logger.debug("📝 텍스트 오버레이 병합 완료: '\(textOverlaySettings.text)'")
-      } else {
-        logger.warning("⚠️ 텍스트 오버레이 병합 실패 - 원본 프레임 사용")
-      }
-    }
-
-    // 2. 프레임 전처리 (포맷 변환 + 해상도 정렬)
-    guard let processedPixelBuffer = preprocessPixelBufferSafely(frameToProcess) else {
-      logger.error("❌ 프레임 전처리 실패 - 프레임 스킵")
-      screenCaptureStats.incrementFailureCount()
-      return
-    }
-
-    // 3. 전처리 결과 확인
-    _ = CVPixelBufferGetWidth(processedPixelBuffer)
-    _ = CVPixelBufferGetHeight(processedPixelBuffer)
-    // logger.debug("📊 최종 전송 프레임: \(finalWidth)x\(finalHeight)") // 반복적인 로그 비활성화
-
-    // 4. CMSampleBuffer 생성 (향상된 에러 핸들링)
-    guard let sampleBuffer = createSampleBufferSafely(from: processedPixelBuffer) else {
-      logger.error("❌ CMSampleBuffer 생성 실패 - VideoCodec 호환성 문제")
-      frameTransmissionFailure += 1
-      screenCaptureStats.incrementFailureCount()
-
-      // VideoCodec 문제 디버깅 정보
-      logVideoCodecDiagnostics(pixelBuffer: processedPixelBuffer)
-      return
-    }
 
     // 5. 프레임 전송 시도 (VideoCodec 워크어라운드 적용)
     do {
@@ -216,7 +277,7 @@ extension HaishinKitManager {
         logger.error("🚨 VideoCodec failedToPrepare 에러 감지 - 프레임 포맷 문제")
 
         // VideoCodec 에러 복구 시도 (더 적극적으로)
-        await handleVideoCodecError(pixelBuffer: processedPixelBuffer)
+        await handleVideoCodecError(pixelBuffer: sourcePixelBuffer)
 
         // 복구 후 재시도 (1회)
         if frameTransmissionFailure % 5 == 0 {  // 5번 실패마다 재시도
@@ -240,6 +301,7 @@ extension HaishinKitManager {
           logger.error("🚨 VideoCodec -12902 에러 확인됨")
         }
       }
+      return false
     }
 
     // 6. 주기적 통계 리셋 (메모리 오버플로우 방지)
@@ -252,6 +314,8 @@ extension HaishinKitManager {
       frameTransmissionFailure = 0
       frameStatsStartTime = currentTime
     }
+
+    return true
   }
 
   /// 프레임 유효성 검증 (인코딩 전 사전 체크)
