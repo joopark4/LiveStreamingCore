@@ -417,6 +417,10 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
   /// 텍스트 오버레이 설정
   @Published public var textOverlaySettings: TextOverlaySettings = TextOverlaySettings()
 
+  /// 현재 송출 마이크 음소거 상태
+  /// `HaishinKitManager+AudioControl` 에서 `setMicrophoneMuted(_:)` / `applyCurrentMicrophoneMuteState()` 가 참조.
+  var isMicrophoneMuted: Bool = false
+
   /// 현재 스트리밍 설정
   var currentSettings: LiveStreamSettings?
 
