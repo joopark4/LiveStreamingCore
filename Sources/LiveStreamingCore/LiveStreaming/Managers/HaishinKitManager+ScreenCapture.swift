@@ -97,7 +97,7 @@ extension HaishinKitManager {
     }
 
     // 🎯 720p 특화 최적화 적용 (사용자 설정 유지, 내부 최적화만)
-    if settings.videoWidth == 1280 && settings.videoHeight == 720 {
+    if settings.normalizedResolutionClass == .p720 {
       // 사용자 설정은 변경하지 않고, 내부 최적화만 적용
       _ = performanceOptimizer.optimize720pStreaming(settings: userSettings)
       logger.info("🎯 720p 특화 내부 최적화 적용됨 (사용자 설정 유지)", category: .system)
@@ -112,15 +112,9 @@ extension HaishinKitManager {
     videoSettings.bitRate = userSettings.videoBitrate * 1000  // kbps를 bps로 변환
 
     // 💡 VideoToolbox 하드웨어 인코딩 최적화 (HaishinKit 2.0.8 API 호환)
-    videoSettings.profileLevel = kVTProfileLevel_H264_High_AutoLevel as String  // 고품질 프로파일
-    videoSettings.allowFrameReordering = true  // B-프레임 활용 (압축 효율 향상, 일반 스트리밍용)
-
-    // 🎯 1080p 최적화: 키프레임 간격 단축으로 품질 향상
-    if userSettings.videoWidth >= 1920 && userSettings.videoHeight >= 1080 {
-      videoSettings.maxKeyFrameIntervalDuration = 1  // 1080p: 1초 간격 키프레임
-    } else {
-      videoSettings.maxKeyFrameIntervalDuration = 2  // 720p 이하: 2초 간격 키프레임
-    }
+    videoSettings.profileLevel = kVTProfileLevel_H264_High_AutoLevel as String
+    videoSettings.allowFrameReordering = false
+    videoSettings.maxKeyFrameIntervalDuration = 2
 
     // 하드웨어 가속은 HaishinKit 2.x에서 기본적으로 활성화됨
 
@@ -191,14 +185,19 @@ extension HaishinKitManager {
     var recommendations: [String] = []
 
     // 성능 권장사항만 제공, 강제 변경하지 않음
-    if settings.videoWidth >= 1920 && settings.videoHeight >= 1080 {
+    if settings.normalizedResolutionClass == .p1080 || settings.normalizedResolutionClass == .p4k {
       recommendations.append("⚠️ 1080p는 높은 성능을 요구합니다. 프레임 드롭이 발생할 수 있습니다.")
       recommendations.append("💡 권장: 720p (1280x720)로 설정하면 더 안정적입니다.")
     }
 
     if settings.frameRate > 30 {
-      recommendations.append("⚠️ 60fps는 높은 CPU 사용량을 요구합니다.")
-      recommendations.append("💡 권장: 30fps로 설정하면 더 안정적입니다.")
+      if settings.normalizedResolutionClass == .p720 && settings.frameRate <= 60 {
+        recommendations.append("ℹ️ 720p는 60fps까지 지원하지만 CPU/GPU 사용량이 크게 증가합니다.")
+        recommendations.append("💡 안정성이 우선이면 30fps를 권장합니다.")
+      } else {
+        recommendations.append("⚠️ 현재 해상도에서는 30fps 초과 설정이 성능 저하를 유발할 수 있습니다.")
+        recommendations.append("💡 권장: 30fps로 설정하면 더 안정적입니다.")
+      }
     }
 
     if settings.videoBitrate > 6000 {
@@ -250,6 +249,7 @@ extension HaishinKitManager {
 
       // 오디오 디바이스 연결
       try await mixer.attachAudio(audioDevice, track: 0)
+      await applyCurrentMicrophoneMuteState()
 
       // 오디오 설정은 기본값 사용 (HaishinKit에서 지원하는 설정만)
 

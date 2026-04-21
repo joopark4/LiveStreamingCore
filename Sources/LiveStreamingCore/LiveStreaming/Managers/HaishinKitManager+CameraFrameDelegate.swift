@@ -34,6 +34,10 @@ extension HaishinKitManager {
     return screenCaptureStats
   }
 
+  public func getScreenCaptureDiagnosticsSnapshot() -> ScreenCaptureStats {
+    return screenCaptureStats
+  }
+
   /// 현재 스트리밍 설정 가져오기 (CameraPreview에서 사용)
   public func getCurrentSettings() -> LiveStreamSettings? {
     return currentSettings

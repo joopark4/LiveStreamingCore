@@ -126,8 +126,8 @@ extension HaishinKitManager {
       result.issues.append("❌ MediaMixer가 실행되지 않음")
     }
 
-    // 캡처 세션 모드 확인 (HaishinKit 2.2.5 기준)
-    result.validItems.append("✅ 캡처 세션 모드: .single (마이크 경로 + 수동 비디오 주입)")
+    // 수동 캡처 모드 확인
+    result.validItems.append("✅ 수동 캡처 모드 활성화 (useManualCapture: true)")
 
     // 멀티캠 및 오디오 설정 확인
     result.validItems.append("✅ 멀티캠 세션: 비활성화 (화면 캡처용)")

@@ -16,10 +16,9 @@ extension HaishinKitManager {
   func initializeMediaMixerBasedStreaming() {
     os_log("🏭 Examples 패턴: MediaMixer 기반 스트리밍 초기화 시작", log: .default, type: .info)
 
-    // Examples 패턴 MediaMixer.
-    // HaishinKit 2.2.5 의 `.manual` 은 NullCaptureSession 이라 마이크 캡처가 끊기므로,
-    // 표준 AVCaptureSession(`.single`)으로 오디오 경로를 유지하고 비디오는 수동 주입함.
+    // Examples와 동일한 MediaMixer 설정
     let mediaMixer = MediaMixer(
+      // .single: 마이크 오디오를 위해 표준 AVCaptureSession 사용 (비디오는 수동 주입)
       captureSessionMode: .single,
       multiTrackAudioMixingEnabled: true
     )

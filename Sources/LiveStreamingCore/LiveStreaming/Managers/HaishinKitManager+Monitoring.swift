@@ -95,29 +95,29 @@ extension HaishinKitManager {
     lastConnectionCheck = Date()
   }
 
-  /// 실행 환경 분석 (진단용 정보 출력)
+  /// 실행 환경 분석
   func analyzeExecutionEnvironment() {
-    logger.info("  📱 실행 환경 분석:", category: .connection)
+    logger.error("  📱 실행 환경 분석:", category: .connection)
 
     #if targetEnvironment(simulator)
-      logger.info("    🖥️ iOS 시뮬레이터에서 실행 중", category: .connection)
-      logger.info("    ⚠️ 시뮬레이터 제약사항:", category: .connection)
-      logger.info("      • 화면 캡처 기능이 실제 디바이스와 다를 수 있음", category: .connection)
-      logger.info("      • 일부 하드웨어 기능 제한", category: .connection)
-      logger.info("      • 네트워크 성능이 실제 디바이스와 차이날 수 있음", category: .connection)
-      logger.info("    💡 권장사항: 실제 iOS 디바이스에서 테스트 해보세요", category: .connection)
+      logger.error("    🖥️ iOS 시뮬레이터에서 실행 중", category: .connection)
+      logger.error("    ⚠️ 시뮬레이터 제약사항:", category: .connection)
+      logger.error("      • 화면 캡처 기능이 실제 디바이스와 다를 수 있음", category: .connection)
+      logger.error("      • 일부 하드웨어 기능 제한", category: .connection)
+      logger.error("      • 네트워크 성능이 실제 디바이스와 차이날 수 있음", category: .connection)
+      logger.error("    💡 권장사항: 실제 iOS 디바이스에서 테스트 해보세요", category: .connection)
     #else
-      logger.info("    📱 실제 iOS 디바이스에서 실행 중", category: .connection)
-      logger.info("    ✅ 하드웨어 환경: 정상", category: .connection)
+      logger.error("    📱 실제 iOS 디바이스에서 실행 중", category: .connection)
+      logger.error("    ✅ 하드웨어 환경: 정상", category: .connection)
     #endif
 
     // iOS 버전 확인
     let systemVersion = UIDevice.current.systemVersion
-    logger.info("    📋 iOS 버전: \(systemVersion)", category: .connection)
+    logger.error("    📋 iOS 버전: \(systemVersion)", category: .connection)
 
     // 디바이스 모델 확인
     let deviceModel = UIDevice.current.model
-    logger.info("    📱 디바이스 모델: \(deviceModel)", category: .connection)
+    logger.error("    📱 디바이스 모델: \(deviceModel)", category: .connection)
 
     // 화면 캡처 권한 상태 확인
     checkScreenCapturePermissions()
@@ -125,70 +125,70 @@ extension HaishinKitManager {
     // 송출 데이터 흐름 진단
     analyzeDataFlowConnection()
 
-    logger.info("    ", category: .connection)
+    logger.error("    ", category: .connection)
   }
 
-  /// 화면 캡처 권한 확인 (진단용 정보 출력)
+  /// 화면 캡처 권한 확인
   func checkScreenCapturePermissions() {
     // 화면 캡처 가능 여부 확인 (iOS 17+ 타겟이므로 항상 사용 가능)
-    logger.info("    🎥 화면 캡처 기능: 사용 가능 (ReplayKit 지원)", category: .connection)
+    logger.error("    🎥 화면 캡처 기능: 사용 가능 (ReplayKit 지원)", category: .connection)
 
     // 현재 스트리밍 설정 확인
     if let settings = currentSettings {
-      logger.info(
+      logger.error(
         "    📊 현재 설정 해상도: \(settings.videoWidth)x\(settings.videoHeight)", category: .connection)
-      logger.info("    📈 현재 설정 비트레이트: \(settings.videoBitrate) kbps", category: .connection)
-      logger.info("    📺 현재 설정 프레임레이트: \(settings.frameRate) fps", category: .connection)
+      logger.error("    📈 현재 설정 비트레이트: \(settings.videoBitrate) kbps", category: .connection)
+      logger.error("    📺 현재 설정 프레임레이트: \(settings.frameRate) fps", category: .connection)
     }
   }
 
-  /// 송출 데이터 흐름 진단 (진단용 정보 출력)
+  /// 송출 데이터 흐름 진단
   func analyzeDataFlowConnection() {
-    logger.info("  📊 송출 데이터 흐름 진단:", category: .connection)
+    logger.error("  📊 송출 데이터 흐름 진단:", category: .connection)
 
     // 1. MediaMixer 상태 확인
     Task {
       let isMixerRunning = await mixer.isRunning
-      logger.info("    🎛️ MediaMixer 상태: \(isMixerRunning ? "실행 중" : "중지됨")", category: .connection)
+      logger.error("    🎛️ MediaMixer 상태: \(isMixerRunning ? "실행 중" : "중지됨")", category: .connection)
     }
 
     // 2. RTMPStream 연결 상태 확인
     if currentRTMPStream != nil {
-      logger.info("    📡 RTMPStream 연결: 연결됨", category: .connection)
+      logger.error("    📡 RTMPStream 연결: 연결됨", category: .connection)
     } else {
-      logger.info("    📡 RTMPStream 연결: ❌ 연결되지 않음", category: .connection)
+      logger.error("    📡 RTMPStream 연결: ❌ 연결되지 않음", category: .connection)
     }
 
     // 3. 화면 캡처 모드 확인
-    logger.info("    🎥 화면 캡처 모드: \(isScreenCaptureMode ? "활성화" : "비활성화")", category: .connection)
+    logger.error("    🎥 화면 캡처 모드: \(isScreenCaptureMode ? "활성화" : "비활성화")", category: .connection)
 
     // 4. 수동 프레임 전송 상태 확인
-    logger.info("    📹 수동 프레임 전송 통계:", category: .connection)
-    logger.info("      • 전송 성공: \(screenCaptureStats.successCount)프레임", category: .connection)
-    logger.info("      • 전송 실패: \(screenCaptureStats.failureCount)프레임", category: .connection)
-    logger.info(
+    logger.error("    📹 수동 프레임 전송 통계:", category: .connection)
+    logger.error("      • 전송 성공: \(screenCaptureStats.successCount)프레임", category: .connection)
+    logger.error("      • 전송 실패: \(screenCaptureStats.failureCount)프레임", category: .connection)
+    logger.error(
       "      • 현재 FPS: \(String(format: "%.1f", screenCaptureStats.currentFPS))",
       category: .connection)
 
     // 5. 데이터 흐름 체인 확인
-    logger.info("    🔗 데이터 흐름 체인:", category: .connection)
-    logger.info("      1️⃣ CameraPreviewUIView → sendManualFrame()", category: .connection)
-    logger.info("      2️⃣ HaishinKitManager → RTMPStream.append()", category: .connection)
-    logger.info("      3️⃣ RTMPStream → RTMP Server", category: .connection)
+    logger.error("    🔗 데이터 흐름 체인:", category: .connection)
+    logger.error("      1️⃣ CameraPreviewUIView → sendManualFrame()", category: .connection)
+    logger.error("      2️⃣ HaishinKitManager → RTMPStream.append()", category: .connection)
+    logger.error("      3️⃣ RTMPStream → RTMP Server", category: .connection)
 
     // 6. 목업 데이터 사용 여부 확인
     if screenCaptureStats.frameCount == 0 {
-      logger.warning("    ⚠️ 실제 프레임 데이터 전송 없음 - 목업 데이터 의심", category: .connection)
-      logger.info("    💡 CameraPreviewUIView의 화면 캡처 타이머가 시작되었는지 확인 필요", category: .connection)
+      logger.error("    ⚠️ 실제 프레임 데이터 전송 없음 - 목업 데이터 의심", category: .connection)
+      logger.error("    💡 CameraPreviewUIView의 화면 캡처 타이머가 시작되었는지 확인 필요", category: .connection)
     } else {
-      logger.info("    ✅ 실제 프레임 데이터 전송 확인됨", category: .connection)
+      logger.error("    ✅ 실제 프레임 데이터 전송 확인됨", category: .connection)
     }
 
     // 7. MediaMixer vs 직접 전송 방식 확인
     if currentRTMPStream != nil {
-      logger.info("    📡 전송 방식: RTMPStream 직접 전송 (권장)", category: .connection)
+      logger.error("    📡 전송 방식: RTMPStream 직접 전송 (권장)", category: .connection)
     } else {
-      logger.info("    📡 전송 방식: MediaMixer 백업 전송", category: .connection)
+      logger.error("    📡 전송 방식: MediaMixer 백업 전송", category: .connection)
     }
 
     logger.error("    ", category: .connection)
@@ -302,16 +302,16 @@ extension HaishinKitManager {
     logDetailedTransmissionStats()
   }
 
-  /// 네트워크 지연 시간 추정 (네트워크 품질 기반)
-  /// - Note: 실제 ping 측정이 아닌 네트워크 품질에 따른 추정치 반환
+  /// 네트워크 지연 시간 추정
   func estimateNetworkLatency() -> TimeInterval {
-    // 네트워크 품질에 따른 추정치 반환 (실제 ping 측정 아님)
+    // 실제 구현에서는 RTMP 서버와의 핑을 측정해야 함
+    // 현재는 네트워크 품질에 따른 추정치 반환
     switch transmissionStats.connectionQuality {
-    case .excellent: return 0.020  // 추정 20ms
-    case .good: return 0.050  // 추정 50ms
-    case .fair: return 0.100  // 추정 100ms
-    case .poor: return 0.300  // 추정 300ms
-    case .unknown: return 0.150  // 추정 150ms
+    case .excellent: return 0.020  // 20ms
+    case .good: return 0.050  // 50ms
+    case .fair: return 0.100  // 100ms
+    case .poor: return 0.300  // 300ms
+    case .unknown: return 0.150  // 150ms
     }
   }
 

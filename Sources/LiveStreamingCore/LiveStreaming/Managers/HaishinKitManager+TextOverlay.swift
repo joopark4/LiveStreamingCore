@@ -31,7 +31,7 @@ extension HaishinKitManager {
   func optimize720pBuffering() async {
     guard let stream = await streamSwitcher.stream,
       let settings = currentSettings,
-      settings.videoWidth == 1280 && settings.videoHeight == 720
+      settings.normalizedResolutionClass == .p720
     else {
       return
     }
@@ -42,7 +42,7 @@ extension HaishinKitManager {
     var videoSettings = await stream.videoSettings
 
     // 720p 최적 버퍼 크기 (더 작은 버퍼로 지연시간 감소)
-    videoSettings.maxKeyFrameIntervalDuration = 1  // 1초 키프레임 간격
+    videoSettings.maxKeyFrameIntervalDuration = 2
 
     // 720p 전용 인코딩 설정
     videoSettings.profileLevel = kVTProfileLevel_H264_Main_AutoLevel as String

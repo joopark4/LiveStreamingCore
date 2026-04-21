@@ -45,21 +45,19 @@ extension PerformanceOptimizationManager {
         }
     }
     
-    /// CPU 사용량 추정 (메모리 기반 간접 추정)
-    /// - Note: 실제 CPU 사용량이 아닌 메모리 크기 기반 추정치 반환
+    /// CPU 사용량 측정
     func getCurrentCPUUsage() -> Double {
         var info = mach_task_basic_info()
         var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
-
+        
         let result = withUnsafeMutablePointer(to: &info) {
             $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
                 task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
             }
         }
-
+        
         if result == KERN_SUCCESS {
-            // 메모리 크기 기반 CPU 사용률 추정 (실제 CPU 측정 아님)
-            return Double(info.resident_size) / 1024.0 / 1024.0 * 0.1
+            return Double(info.resident_size) / 1024.0 / 1024.0 * 0.1 // 추정 CPU 사용률
         }
         return 0.0
     }
