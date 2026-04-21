@@ -130,7 +130,8 @@ public class StreamingLogger: ObservableObject {
         #endif
     }
     
-    /// 디버그 로그
+    /// 디버그 로그 (성능 최적화를 위해 비활성화됨)
+    /// - Note: 릴리즈 빌드에서 로그 오버헤드 방지를 위해 구현 비활성화
     public func debug(
         _ message: String,
         category: LogCategory = .system,
@@ -138,7 +139,8 @@ public class StreamingLogger: ObservableObject {
         file: String = #file,
         line: Int = #line
     ) {
-//        log(level: .debug, category: category, message: message, function: function, file: file, line: line)
+        // 성능 최적화: 디버그 로그 비활성화
+        // log(level: .debug, category: category, message: message, function: function, file: file, line: line)
     }
     
     /// 정보 로그

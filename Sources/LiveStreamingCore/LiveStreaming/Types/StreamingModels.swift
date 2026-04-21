@@ -146,10 +146,10 @@ public enum LiveStreamingCoreNamespace {
             self.connectionTimeout = 30
         }
         
-        /// YouTube Live 안정성을 위한 추천 설정
+        /// YouTube Live 안정성을 위한 추천 설정 (저비트레이트, 네트워크 안정성 우선)
         public static func youTubeLiveOptimized() -> LiveStreamSettings {
             var settings = LiveStreamSettings()
-            settings.videoBitrate = 1500  // 안정적인 1080p
+            settings.videoBitrate = 1500  // 저비트레이트 설정 (네트워크 안정성 우선, 화질 희생)
             settings.frameRate = 30
             settings.videoWidth = 1920
             settings.videoHeight = 1080

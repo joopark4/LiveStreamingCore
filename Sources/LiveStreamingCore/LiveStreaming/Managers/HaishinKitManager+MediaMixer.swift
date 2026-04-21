@@ -3,6 +3,7 @@ import Combine
 import CoreImage
 import Foundation
 import HaishinKit
+import RTMPHaishinKit
 import Network
 import UIKit
 import VideoToolbox
@@ -17,7 +18,6 @@ extension HaishinKitManager {
 
     // Examples와 동일한 MediaMixer 설정
     let mediaMixer = MediaMixer(
-      multiCamSessionEnabled: false,  // 단일 카메라 사용
       multiTrackAudioMixingEnabled: true,
       useManualCapture: true  // 수동 캡처 모드 (화면 캡처용)
     )

@@ -4,6 +4,7 @@ import Combine
 import CoreImage
 import Foundation
 import HaishinKit
+import RTMPHaishinKit
 import Network
 import UIKit
 import VideoToolbox
@@ -355,8 +356,11 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
   let logger = StreamingLogger.shared
 
   /// **MediaMixer (Examples 패턴)**
+  /// captureSessionMode: .single — 표준 AVCaptureSession으로 마이크 캡처 경로 유지.
+  /// 비디오 프레임은 RTMPStream.append로 수동 주입하므로 비디오 디바이스는 attach하지 않음.
+  /// (HaishinKit 2.2.5의 `.manual`은 NullCaptureSession이라 오디오 입력이 불가능.)
   lazy var mixer = MediaMixer(
-    multiCamSessionEnabled: false, multiTrackAudioMixingEnabled: false, useManualCapture: true)
+    captureSessionMode: .single, multiTrackAudioMixingEnabled: false)
 
   /// MediaMixer 인스턴스 저장 용도
   var mediaMixer: MediaMixer?
@@ -412,6 +416,10 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
 
   /// 텍스트 오버레이 설정
   @Published public var textOverlaySettings: TextOverlaySettings = TextOverlaySettings()
+
+  /// 현재 송출 마이크 음소거 상태
+  /// `HaishinKitManager+AudioControl` 에서 `setMicrophoneMuted(_:)` / `applyCurrentMicrophoneMuteState()` 가 참조.
+  var isMicrophoneMuted: Bool = false
 
   /// 현재 스트리밍 설정
   var currentSettings: LiveStreamSettings?
@@ -511,7 +519,7 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
     logger.debug("📶 네트워크 품질 업데이트: \(quality.description)", category: .connection)
   }
 
-  // MARK: - 기존 일반 스트리밍 메서드들 제거 - 화면 캡처 스트리밍만 사용
+  // MARK: - 스트리밍 중지 (화면 캡처 전용)
 
   /// **Examples 패턴을 적용한 스트리밍 중지**
   public func stopStreaming() async {
@@ -523,17 +531,17 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
     // 2. Examples 패턴: MediaMixer 정리
     cleanupMediaMixer()
 
-    // 3. 기존 MediaMixer 중지
+    // 3. MediaMixer 실행 중지
     await mixer.stopRunning()
 
-    // 4. 카메라/오디오 해제
-    try? await mixer.attachAudio(nil, track: 0)  // 오디오 해제
+    // 4. 오디오 연결 해제
+    try? await mixer.attachAudio(nil, track: 0)
 
-    // 4. 모니터링 중지
+    // 5. 모니터링 중지
     stopDataMonitoring()
     stopConnectionHealthMonitoring()
 
-    // 5. 상태 업데이트
+    // 6. 상태 업데이트
     isStreaming = false
     isScreenCaptureMode = false  // 화면 캡처 모드 해제
     currentStatus = .idle
@@ -542,6 +550,4 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
 
     logger.info("✅ **Examples 패턴** 스트리밍 중지 완료")
   }
-
-  // 기존 일반 스트리밍용 카메라/오디오 설정 메서드들 제거 - 화면 캡처 스트리밍만 사용
 }

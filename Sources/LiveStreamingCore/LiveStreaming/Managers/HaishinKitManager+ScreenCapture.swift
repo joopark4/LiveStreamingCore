@@ -113,13 +113,18 @@ extension HaishinKitManager {
 
     // 💡 VideoToolbox 하드웨어 인코딩 최적화 (HaishinKit 2.0.8 API 호환)
     videoSettings.profileLevel = kVTProfileLevel_H264_High_AutoLevel as String  // 고품질 프로파일
-    videoSettings.allowFrameReordering = true  // B-프레임 활용 (압축 효율 향상)
-    videoSettings.maxKeyFrameIntervalDuration = 2  // 2초 간격 키프레임
+    videoSettings.allowFrameReordering = true  // B-프레임 활용 (압축 효율 향상, 일반 스트리밍용)
 
-    // 하드웨어 가속 활성화 (iOS는 기본적으로 하드웨어 사용)
-    videoSettings.isHardwareEncoderEnabled = true
+    // 🎯 1080p 최적화: 키프레임 간격 단축으로 품질 향상
+    if userSettings.videoWidth >= 1920 && userSettings.videoHeight >= 1080 {
+      videoSettings.maxKeyFrameIntervalDuration = 1  // 1080p: 1초 간격 키프레임
+    } else {
+      videoSettings.maxKeyFrameIntervalDuration = 2  // 720p 이하: 2초 간격 키프레임
+    }
 
-    await stream.setVideoSettings(videoSettings)
+    // 하드웨어 가속은 HaishinKit 2.x에서 기본적으로 활성화됨
+
+    try await stream.setVideoSettings(videoSettings)
     logger.info(
       "✅ 사용자 설정 적용 완료: \(userSettings.videoWidth)×\(userSettings.videoHeight) @ \(userSettings.videoBitrate)kbps",
       category: .system)
@@ -128,7 +133,7 @@ extension HaishinKitManager {
     var audioSettings = await stream.audioSettings
     audioSettings.bitRate = userSettings.audioBitrate * 1000  // kbps를 bps로 변환
 
-    await stream.setAudioSettings(audioSettings)
+    try await stream.setAudioSettings(audioSettings)
     logger.info("✅ 사용자 오디오 설정 적용: \(userSettings.audioBitrate)kbps", category: .system)
 
     // 🔍 중요: 설정 적용 검증 (실제 적용된 값 확인)
