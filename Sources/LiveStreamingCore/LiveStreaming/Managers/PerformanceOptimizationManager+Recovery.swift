@@ -70,8 +70,9 @@ extension PerformanceOptimizationManager {
     func handleMemoryPressure() async {
         logger.info("🧹 메모리 압박 상황 - 정리 작업 시작")
         
-        // 1. 픽셀 버퍼 풀 정리
+        // 1. 픽셀 버퍼 풀 정리 — 다음 `ensurePixelBufferPool` 호출 때 현재 해상도로 재생성됨.
         pixelBufferPool = nil
+        pixelBufferPoolSize = nil
         
         // 2. CIContext 캐시 정리
         cachedCIContext = nil

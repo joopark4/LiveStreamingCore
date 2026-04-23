@@ -18,6 +18,7 @@ extension PerformanceOptimizationManager {
         
         cachedCIContext = nil
         pixelBufferPool = nil
+        pixelBufferPoolSize = nil
         logger.info("🧹 PerformanceOptimizationManager 정리 완료")
     }
 }

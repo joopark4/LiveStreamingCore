@@ -46,6 +46,9 @@ public class PerformanceOptimizationManager: ObservableObject {
     var cachedCIContext: CIContext?
     /// 픽셀 버퍼 풀
     var pixelBufferPool: CVPixelBufferPool?
+    /// 현재 풀이 생성된 해상도. `optimizedFrameConversion` / `getReusablePixelBuffer` 가
+    /// 호출될 때마다 `targetSize` 와 비교해 달라지면 풀을 다시 만든다.
+    var pixelBufferPoolSize: CGSize?
     /// 성능 메트릭스 (메인 스레드에서 UI 업데이트)
     @MainActor @Published var currentCPUUsage: Double = 0.0
     @MainActor @Published var currentMemoryUsage: Double = 0.0

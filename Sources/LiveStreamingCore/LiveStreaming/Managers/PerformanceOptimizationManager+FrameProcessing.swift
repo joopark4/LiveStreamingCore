@@ -20,18 +20,21 @@ extension PerformanceOptimizationManager {
                 self.frameProcessingTime = processingTime
             }
         }
-        
+
         guard let context = cachedCIContext else {
             logger.error("❌ CIContext 캐시 없음")
             return nil
         }
-        
-        // 픽셀 버퍼 풀에서 재사용 버퍼 획득
+
+        // 픽셀 버퍼 풀에서 재사용 버퍼 획득. 풀은 타겟 해상도에 대해 lazy-create 되고
+        // 해상도가 달라지면 자동으로 재생성된다 (과거엔 pool 이 전혀 초기화되지 않아
+        // 1080p30 에서 프레임마다 `CVPixelBufferCreate` 가 반복 호출됐음).
+        ensurePixelBufferPool(targetSize: targetSize)
         var outputBuffer: CVPixelBuffer?
         if let pool = pixelBufferPool {
             CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &outputBuffer)
         }
-        
+
         guard let output = outputBuffer else {
             logger.warning("⚠️ 풀에서 픽셀 버퍼 획득 실패 - 새로 생성")
             return createNewPixelBuffer(targetSize: targetSize)
@@ -124,6 +127,7 @@ extension PerformanceOptimizationManager {
     
     /// 재사용 가능한 픽셀 버퍼 획득
     func getReusablePixelBuffer(targetSize: CGSize) -> CVPixelBuffer? {
+        ensurePixelBufferPool(targetSize: targetSize)
         // 픽셀 버퍼 풀에서 재사용 버퍼 획득
         if let pool = pixelBufferPool {
             var outputBuffer: CVPixelBuffer?
@@ -132,9 +136,56 @@ extension PerformanceOptimizationManager {
                 return outputBuffer
             }
         }
-        
+
         // 풀에서 실패 시 새로 생성
         return createNewPixelBuffer(targetSize: targetSize)
+    }
+
+    /// 타겟 해상도에 맞춘 `CVPixelBufferPool` 을 lazy-create 하고 해상도 변경 시 재생성.
+    /// - 픽셀 포맷: `kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange` (H.264 인코더 친화)
+    /// - 할당 정책: `MinimumBufferCount = 3`, `MaximumBufferAge = 1.0s`
+    /// - 실패 시 `pixelBufferPool` 은 nil 로 남아 이후 경로가 `createNewPixelBuffer` 폴백.
+    func ensurePixelBufferPool(targetSize: CGSize) {
+        let width = Int(targetSize.width.rounded())
+        let height = Int(targetSize.height.rounded())
+        guard width > 0, height > 0 else { return }
+
+        let normalizedSize = CGSize(width: width, height: height)
+        if let existing = pixelBufferPool, pixelBufferPoolSize == normalizedSize {
+            _ = existing  // 기존 풀 그대로 재사용
+            return
+        }
+
+        let bufferAttributes: [CFString: Any] = [
+            kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+            kCVPixelBufferWidthKey: width,
+            kCVPixelBufferHeightKey: height,
+            kCVPixelBufferBytesPerRowAlignmentKey: 16,
+            kCVPixelBufferIOSurfacePropertiesKey: [:]
+        ]
+        let poolAttributes: [CFString: Any] = [
+            kCVPixelBufferPoolMinimumBufferCountKey: 3,
+            kCVPixelBufferPoolMaximumBufferAgeKey: 1.0
+        ]
+
+        var newPool: CVPixelBufferPool?
+        let status = CVPixelBufferPoolCreate(
+            kCFAllocatorDefault,
+            poolAttributes as CFDictionary,
+            bufferAttributes as CFDictionary,
+            &newPool
+        )
+
+        guard status == kCVReturnSuccess, let pool = newPool else {
+            logger.warning("⚠️ CVPixelBufferPool 생성 실패 (status=\(status)) - 매 프레임 CVPixelBufferCreate 폴백 사용")
+            pixelBufferPool = nil
+            pixelBufferPoolSize = nil
+            return
+        }
+
+        pixelBufferPool = pool
+        pixelBufferPoolSize = normalizedSize
+        logger.info("🧠 CVPixelBufferPool 준비: \(width)×\(height) (min=3, age=1.0s)")
     }
     
     /// UI 뷰를 CIImage로 직접 렌더링 (메모리 효율적)
