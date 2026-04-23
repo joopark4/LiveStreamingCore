@@ -177,6 +177,18 @@ public protocol HaishinKitManagerProtocol: AnyObject {
   /// 송출 마이크 음소거 상태 적용
   func setMicrophoneMuted(_ muted: Bool) async -> Bool
 
+  /// 오디오 피크 옵저버 부착. 소비자 앱이 `HaishinKit` / `RTMPHaishinKit` 를 직접 import 하지
+  /// 않고도 피크 레벨만 받아볼 수 있도록 캡슐화. 이미 붙어 있으면 교체.
+  func attachAudioPeakObserver(
+    onPeak: @escaping @Sendable (_ level: Float, _ decibels: Float) -> Void
+  ) async
+
+  /// 오디오 피크 옵저버 해제.
+  func detachAudioPeakObserver() async
+
+  /// 오디오 피크 옵저버가 현재 붙어 있는지 여부.
+  var isAudioPeakObserverAttached: Bool { get }
+
   /// RTMP 스트림 반환 (UI 미리보기용)
   func getRTMPStream() -> RTMPStream?
 
@@ -448,6 +460,11 @@ public class HaishinKitManager: NSObject, @preconcurrency HaishinKitManagerProto
 
   /// 현재 송출 마이크 음소거 상태
   var isMicrophoneMuted: Bool = false
+
+  /// 현재 부착된 오디오 피크 옵저버 (있다면). `attachAudioPeakObserver(onPeak:)` 가 세팅,
+  /// `detachAudioPeakObserver()` 가 해제. 소비자 앱 쪽에서는 HaishinKit 타입을 들여다볼
+  /// 필요가 없도록 이 프로퍼티는 internal 로 유지한다.
+  var audioPeakStreamOutput: AudioPeakStreamOutput?
 
   /// 현재 스트리밍 설정
   var currentSettings: LiveStreamSettings?
